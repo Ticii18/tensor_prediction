@@ -1,100 +1,82 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Predicción de X a partir de Y</title>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <title>Gráfico de pérdida por época</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.14.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-      canvas { max-width: 600px; }
+    body { font-family: Arial; padding: 20px; }
+    canvas { max-width: 600px; margin-top: 20px; }
   </style>
 </head>
 <body>
-    <h2>Modelo simple: y = 2x² - 3x + 1</h2>
-    <p id="output">Entrenando el modelo...</p>
-    <canvas id="grafico"></canvas>
-<script>
-      // Crear datos (x y y)
-      const x_vals = [-3, -2, -1, 0, 1, 2, 3, 4, 5];
-      const y_vals = x_vals.map(x => 2 * x * x - 3 * x + 1); // y = 2x² - 3x + 1
+  <h2>📉 Entrenamiento del modelo: y = 2x² - 3x + 1</h2>
+  <button id="btnTrain">Entrenar modelo</button>
+  <p id="estado">Estado: esperando entrenamiento...</p>
+  <canvas id="lossChart"></canvas>
 
-      const xs = tf.tensor2d(x_vals, [x_vals.length, 1]);
-      const ys = tf.tensor2d(y_vals, [y_vals.length, 1]);
+  <script>
+    let model;
+    const hist_epoch = [];
+    const estado = document.getElementById("estado");
 
-      // Crear modelo
-      const model = tf.sequential();
-      model.add(tf.layers.dense({ inputShape: [1], units: 8, activation: 'relu' }));
+    document.getElementById("btnTrain").addEventListener("click", async () => {
+      model = tf.sequential();
+      model.add(tf.layers.dense({ units: 10, inputShape: [1], activation: 'relu' }));
+      model.add(tf.layers.dense({ units: 10, activation: 'relu' }));
       model.add(tf.layers.dense({ units: 1 }));
+      model.compile({ loss: 'meanSquaredError', optimizer: tf.train.adam(0.01) });
 
-      model.compile({ loss: 'meanSquaredError', optimizer: 'adam' });
+      const xTrain = tf.tensor1d([-3, -2, -1, 0, 1, 2, 3, 4, 5]);
+      const yTrain = tf.tensor1d(
+        xTrain.arraySync().map(x => 2 * x * x - 3 * x + 1)
+      );
 
-      // Entrenar modelo
-      async function entrenar() {
-        await model.fit(xs, ys, {
-          epochs: 200,
-          callbacks: {
-            onEpochEnd: (epoch, logs) => {
-              if ((epoch + 1) % 50 === 0) {
-                console.log(`Epoch ${epoch + 1}, pérdida: ${logs.loss.toFixed(5)}`);
-              }
-            }
-          }
-        });
+      hist_epoch.length = 0;
 
-        const entrada = tf.tensor2d([5], [1, 1]); // predecir x = 5
-        const salida = await model.predict(entrada).array();
-        const y_predicho = salida[0][0];
-        document.getElementById("output").innerText =
-          `Para x = 5, el modelo predice y ≈ ${y_predicho.toFixed(2)}`;
-
-        graficarModelo();
-      }
-
-      async function graficarModelo() {
-        const x_test = [];
-        const y_real = [];
-        const y_modelo = [];
-
-        for (let x = -3; x <= 5; x += 0.1) {
-          x_test.push(x);
-          y_real.push(2 * x * x - 3 * x + 1); // fórmula real
-
-          const y_pred = await model.predict(tf.tensor2d([[x]])).array();
-          y_modelo.push(y_pred[0][0]);
-        }
-
-        new Chart(document.getElementById("grafico"), {
-          type: 'line',
-          data: {
-            labels: x_test,
-            datasets: [
-              {
-                label: 'Fórmula real (2x² - 3x + 1)',
-                data: y_real,
-                borderColor: 'blue',
-                fill: false
-              },
-              {
-                label: 'Modelo predicho',
-                data: y_modelo,
-                borderColor: 'red',
-                borderDash: [5, 5],
-                fill: false
-              }
-            ]
+      await model.fit(xTrain, yTrain, {
+        epochs: 250,
+        callbacks: {
+          onTrainEnd: () => {
+            estado.innerText = "✅ Modelo entrenado correctamente.";
+            dibujarGrafico();
           },
-          options: {
-            responsive: true,
-            scales: {
-              x: { title: { display: true, text: 'x' } },
-              y: { title: { display: true, text: 'y' } }
-            }
+          onEpochEnd: async (epoch, logs) => {
+            hist_epoch.push({ epochs: epoch + 1, loss: logs.loss });
+            console.log(`Época ${epoch + 1}: pérdida = ${logs.loss.toFixed(4)}`);
           }
-        });
-      }
+        },
+      });
+    });
 
-      entrenar();
-    </script>
+    function dibujarGrafico() {
+      const ctx = document.getElementById('lossChart').getContext('2d');
+      const epochs = hist_epoch.map(p => p.epochs);
+      const losses = hist_epoch.map(p => p.loss);
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: epochs,
+          datasets: [{
+            label: 'Pérdida (Loss)',
+            data: losses,
+            borderColor: 'tomato',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            tension: 0.1,
+            pointRadius: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: { title: { display: true, text: 'Época' } },
+            y: { title: { display: true, text: 'Valor de pérdida' } }
+          }
+        }
+      });
+    }
+  </script>
 </body>
 </html>
