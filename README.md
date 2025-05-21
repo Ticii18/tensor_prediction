@@ -10,9 +10,7 @@ Este proyecto es un ejemplo **sencillo y visual** que entrena un modelo con Tens
 - Usa **TensorFlow.js** para crear y entrenar un modelo de red neuronal.
 - Aprende la fórmula: `y = 2x² - 3x + 1`.
 - Dibuja un gráfico con:
-  - Línea **azul**: fórmula real.
   - Línea **roja**: predicción del modelo.
-- Muestra la predicción para `x = 5` en pantalla.
 
 ---
 
