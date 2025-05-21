@@ -42,7 +42,6 @@
           }
         });
 
-        // Probar predicción
         const entrada = tf.tensor2d([5], [1, 1]); // predecir x = 5
         const salida = await model.predict(entrada).array();
         const y_predicho = salida[0][0];
@@ -52,7 +51,6 @@
         graficarModelo();
       }
 
-      // Mostrar gráfico
       async function graficarModelo() {
         const x_test = [];
         const y_real = [];
